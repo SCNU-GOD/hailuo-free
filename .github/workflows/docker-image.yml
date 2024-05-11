@@ -8,7 +8,7 @@ on:
         required: false
         default: 'latest'
 jobs:
-  build-and-push:
+   build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,16 +33,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set ref name
+      - name: Set tag name
+        id: tag_name
         run: |
-          REF_NAME=$(echo $GITHUB_REF | sed 's|refs/tags/||')
-          echo "REF_NAME=$REF_NAME" >> $GITHUB_ENV
-
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "::set-output name=tag::${GITHUB_REF#refs/tags/}"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "::set-output name=tag::${{ github.event.inputs.tag }}"
+          fi
       - name: Set Docker repository names
+        id: repo-set
         run: |
-          echo "repo_all=$(echo "${{ github.repository }}" | awk '{print tolower($0)}')" >> $GITHUB_ENV
-          echo "repo_name=$(echo "${{ github.event.repository.name }}" | awk '{print tolower($0)}')" >> $GITHUB_ENV
-
+          echo "::set-output name=repo_all::$(echo "${{ github.repository }}" | awk '{print tolower($0)}')"
+          echo "::set-output name=repo_name::$(echo "${{ github.event.repository.name }}" | awk '{print tolower($0)}')"
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
@@ -50,10 +53,10 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            vinlic/${{ env.repo_name }}:${{ env.REF_NAME }}
-            vinlic/${{ env.repo_name }}:latest
-            ghcr.io/${{ env.repo_all }}:${{ env.REF_NAME }}
-            ghcr.io/${{ env.repo_all }}:latest
+            yangclivia/${{ steps.repo-set.outputs.repo_name }}:${{ steps.tag_name.outputs.tag }}
+            yangclivia/${{ steps.repo-set.outputs.repo_name }}:latest
+            ghcr.io/${{ steps.repo-set.outputs.repo_all }}:${{ steps.tag_name.outputs.tag }}
+            ghcr.io/${{ steps.repo-set.outputs.repo_all }}:latest
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
