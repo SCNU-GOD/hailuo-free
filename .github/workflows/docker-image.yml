@@ -1,14 +1,16 @@
 name: Build and Push Docker Image
 
 on:
+  release:
+    types: [created]
   workflow_dispatch:
     inputs:
-      ref:
-        description: 'Git reference to checkout (branch or SHA)'
-        required: false
-        default: 'latest'
+      tag:
+        description: 'Tag Name'
+        required: true
+
 jobs:
-   build-and-push:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
